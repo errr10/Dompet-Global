@@ -1,0 +1,978 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DompetGlobal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#080d16;
+  --panel:#111b2b;
+  --panel2:#172337;
+  --green:#10b981;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --red:#f87171;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:Arial,sans-serif;
+}
+header{
+  padding:22px 18px;background:#0b1220;
+  border-bottom:1px solid #263449;
+}
+header h1{margin:0;color:var(--green);font-size:25px}
+header p{color:var(--muted);font-size:13px;margin-bottom:0}
+main{max-width:1000px;margin:auto;padding:16px}
+nav{
+  display:flex;gap:8px;overflow-x:auto;padding:12px 0;
+}
+nav button{
+  white-space:nowrap;background:var(--panel2);
+  color:var(--text);border:1px solid #29384d;
+  padding:12px 15px;border-radius:10px;
+}
+nav button.active{background:var(--green);color:#06251c}
+section{display:none}
+section.active{display:block}
+.card{
+  background:var(--panel);border:1px solid #263449;
+  padding:17px;border-radius:15px;margin-bottom:14px;
+}
+.cards{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+}
+.stat small{color:var(--muted)}
+.stat h2{font-size:19px;margin:10px 0 0;overflow-wrap:anywhere}
+.green{color:var(--green)}
+.red{color:var(--red)}
+h2,h3{margin-top:0}
+input,select{
+  width:100%;padding:12px;margin:7px 0 13px;
+  border-radius:9px;border:1px solid #34445b;
+  background:#0b1422;color:var(--text);font-size:15px;
+}
+label{font-size:13px;color:var(--muted)}
+button{
+  cursor:pointer;border:0;border-radius:9px;
+  padding:12px 15px;background:var(--green);
+  color:#06251c;font-weight:bold;
+}
+button.secondary{background:#29384d;color:var(--text)}
+button.danger{background:#7f3038;color:white}
+.item{
+  background:var(--panel2);padding:13px;
+  border-radius:10px;margin:9px 0;
+}
+.item-row{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:10px;
+}
+.item small{color:var(--muted)}
+.item button{padding:8px 10px;margin-top:8px}
+.form-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.wish-img{
+  width:100%;max-height:180px;object-fit:cover;
+  border-radius:9px;margin-bottom:10px;
+}
+.progress{
+  height:9px;background:#34445b;
+  border-radius:20px;overflow:hidden;margin:10px 0;
+}
+.progress div{height:100%;background:var(--green)}
+.empty{color:var(--muted);text-align:center;padding:20px}
+.result-box{
+  background:#0b1422;border:1px solid #34445b;
+  border-radius:12px;padding:16px;margin-top:15px;
+}
+.result-box h2{font-size:25px;overflow-wrap:anywhere}
+footer{
+  text-align:center;color:var(--muted);
+  padding:25px;font-size:12px;
+}
+canvas{max-height:300px}
+@media(min-width:700px){
+  .cards{grid-template-columns:repeat(4,1fr)}
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>DompetGlobal</h1>
+  <p>Take Control of Your Money.</p>
+</header>
+
+<main>
+
+<nav>
+  <button class="active" onclick="showPage('dashboard',this)">Dashboard</button>
+  <button onclick="showPage('transactions',this)">Transaksi</button>
+  <button onclick="showPage('converter',this)">Konversi</button>
+  <button onclick="showPage('wishlist',this)">Wishlist</button>
+  <button onclick="showPage('settings',this)">Pengaturan</button>
+</nav>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="active">
+
+  <div class="card">
+    <label>Mata uang utama dashboard</label>
+    <select id="mainCurrency" onchange="changeCurrency()">
+      <option value="IDR">IDR - Rupiah</option>
+      <option value="USD">USD - Dollar AS</option>
+      <option value="EUR">EUR - Euro</option>
+      <option value="SGD">SGD - Dollar Singapura</option>
+      <option value="MYR">MYR - Ringgit Malaysia</option>
+      <option value="JPY">JPY - Yen Jepang</option>
+      <option value="GBP">GBP - Poundsterling</option>
+      <option value="AUD">AUD - Dollar Australia</option>
+    </select>
+    <small id="rateStatus">Menghubungkan kurs mata uang...</small>
+  </div>
+
+  <div class="cards">
+    <div class="card stat">
+      <small>Total Saldo</small>
+      <h2 id="balance">Rp0</h2>
+    </div>
+    <div class="card stat">
+      <small>Pemasukan</small>
+      <h2 class="green" id="incomeTotal">Rp0</h2>
+    </div>
+    <div class="card stat">
+      <small>Pengeluaran</small>
+      <h2 class="red" id="expenseTotal">Rp0</h2>
+    </div>
+    <div class="card stat">
+      <small>Tabungan Wishlist</small>
+      <h2 id="savingTotal">Rp0</h2>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <h3>Grafik Pengeluaran</h3>
+      <canvas id="expenseChart"></canvas>
+      <p id="chartEmpty" class="empty">Belum ada data pengeluaran.</p>
+    </div>
+
+    <div class="card">
+      <h3>Grafik Pemasukan dan Pengeluaran</h3>
+      <canvas id="barChart"></canvas>
+      <p id="barEmpty" class="empty">Belum ada data transaksi.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Transaksi Terbaru</h3>
+    <div id="recentTransactions"></div>
+  </div>
+</section>
+
+<!-- TRANSAKSI -->
+<section id="transactions">
+
+  <div class="card">
+    <h2>Tambah Transaksi</h2>
+
+    <form id="transactionForm">
+      <label>Nama transaksi</label>
+      <input id="transactionName" placeholder="Contoh: Uang saku" required>
+
+      <div class="form-grid">
+        <div>
+          <label>Jenis transaksi</label>
+          <select id="transactionType">
+            <option value="income">Pemasukan</option>
+            <option value="expense">Pengeluaran</option>
+          </select>
+        </div>
+        <div>
+          <label>Mata uang</label>
+          <select id="transactionCurrency">
+            <option value="IDR">IDR</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="SGD">SGD</option>
+            <option value="MYR">MYR</option>
+            <option value="JPY">JPY</option>
+            <option value="GBP">GBP</option>
+            <option value="AUD">AUD</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Jumlah uang</label>
+      <input id="transactionAmount" type="number"
+        min="0.01" step="any" placeholder="Masukkan jumlah" required>
+
+      <label>Tanggal</label>
+      <input id="transactionDate" type="date" required>
+
+      <label>Catatan (opsional)</label>
+      <input id="transactionNote" placeholder="Keterangan transaksi">
+
+      <button type="submit">+ Simpan Transaksi</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Riwayat Transaksi</h3>
+    <div id="transactionList"></div>
+  </div>
+</section>
+
+<!-- KONVERSI MATA UANG -->
+<section id="converter">
+
+  <div class="card">
+    <h2>Konversi Mata Uang</h2>
+    <p style="color:var(--muted)">
+      Konversikan uang ke berbagai mata uang dunia secara otomatis.
+    </p>
+
+    <label>Jumlah uang</label>
+    <input type="number" id="convertAmount"
+      value="100000" min="0" step="any"
+      oninput="calculateConversion()">
+
+    <label>Mata uang asal</label>
+    <select id="convertFrom" onchange="calculateConversion()">
+      <option value="IDR">🇮🇩 IDR - Rupiah</option>
+      <option value="USD">🇺🇸 USD - Dollar AS</option>
+      <option value="EUR">🇪🇺 EUR - Euro</option>
+      <option value="SGD">🇸🇬 SGD - Dollar Singapura</option>
+      <option value="MYR">🇲🇾 MYR - Ringgit Malaysia</option>
+      <option value="JPY">🇯🇵 JPY - Yen Jepang</option>
+      <option value="GBP">🇬🇧 GBP - Poundsterling</option>
+      <option value="AUD">🇦🇺 AUD - Dollar Australia</option>
+    </select>
+
+    <div style="text-align:center;margin:5px">
+      <button type="button" class="secondary"
+        onclick="swapCurrencies()">⇅ Tukar Mata Uang</button>
+    </div>
+
+    <label>Mata uang tujuan</label>
+    <select id="convertTo" onchange="calculateConversion()">
+      <option value="USD">🇺🇸 USD - Dollar AS</option>
+      <option value="IDR">🇮🇩 IDR - Rupiah</option>
+      <option value="EUR">🇪🇺 EUR - Euro</option>
+      <option value="SGD">🇸🇬 SGD - Dollar Singapura</option>
+      <option value="MYR">🇲🇾 MYR - Ringgit Malaysia</option>
+      <option value="JPY">🇯🇵 JPY - Yen Jepang</option>
+      <option value="GBP">🇬🇧 GBP - Poundsterling</option>
+      <option value="AUD">🇦🇺 AUD - Dollar Australia</option>
+    </select>
+
+    <div class="result-box">
+      <small>HASIL KONVERSI</small>
+      <h2 class="green" id="conversionResult">Memuat kurs...</h2>
+      <small id="conversionInfo">Menunggu data kurs.</small>
+    </div>
+
+    <p style="color:var(--muted);font-size:12px" id="conversionUpdated">
+      Kurs memerlukan koneksi internet.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Daftar Mata Uang</h3>
+    <p style="color:var(--muted);font-size:13px">
+      IDR, USD, EUR, SGD, MYR, JPY, GBP, dan AUD.
+    </p>
+  </div>
+</section>
+
+<!-- WISHLIST -->
+<section id="wishlist">
+
+  <div class="card">
+    <h2>Tambah Wishlist</h2>
+
+    <form id="wishlistForm">
+      <label>Nama barang / tujuan</label>
+      <input id="wishName" placeholder="Contoh: Laptop baru" required>
+
+      <label>Target harga (mata uang utama)</label>
+      <input id="wishTarget" type="number"
+        min="0.01" step="any" placeholder="Contoh: 5000000" required>
+
+      <label>Foto wishlist (opsional)</label>
+      <input id="wishImage" type="file" accept="image/*">
+
+      <button type="submit">+ Tambah Wishlist</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Daftar Wishlist</h3>
+    <div id="wishlistList"></div>
+  </div>
+</section>
+
+<!-- PENGATURAN -->
+<section id="settings">
+
+  <div class="card">
+    <h2>Pengaturan Data</h2>
+    <p>Data tersimpan otomatis di browser perangkat ini.</p>
+
+    <button onclick="exportData()">Download Backup JSON</button>
+
+    <br><br>
+    <label>Restore data dari file backup</label>
+    <input type="file" id="importFile" accept=".json,application/json">
+    <button class="secondary" onclick="importData()">Pulihkan Data</button>
+  </div>
+
+  <div class="card">
+    <h3>Informasi DompetGlobal</h3>
+    <p>Aplikasi pengelola keuangan pribadi dengan fitur multi-mata uang.</p>
+    <p><small>Kurs membutuhkan koneksi internet. Nilai kurs dapat berubah.</small></p>
+    <button class="danger" onclick="resetData()">Hapus Semua Data</button>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  DompetGlobal © 2026 - Take Control of Your Money.
+</footer>
+
+<script>
+const STORAGE_KEY = "dompetGlobal";
+
+const currencies = [
+  "IDR","USD","EUR","SGD","MYR","JPY","GBP","AUD"
+];
+
+let data = {
+  transactions:[],
+  wishlist:[],
+  currency:"IDR"
+};
+
+let rates = {IDR:1};
+let chart = null;
+let barChart = null;
+let ratesLoaded = false;
+
+function loadData(){
+  try{
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+
+      data = {
+        transactions:Array.isArray(parsed.transactions)
+          ? parsed.transactions : [],
+        wishlist:Array.isArray(parsed.wishlist)
+          ? parsed.wishlist : [],
+        currency:currencies.includes(parsed.currency)
+          ? parsed.currency : "IDR"
+      };
+    }
+  }catch(e){
+    console.error("Gagal membaca data",e);
+  }
+}
+
+function saveData(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
+
+function showPage(id,button){
+  document.querySelectorAll("section").forEach(section=>{
+    section.classList.remove("active");
+  });
+
+  document.querySelectorAll("nav button").forEach(btn=>{
+    btn.classList.remove("active");
+  });
+
+  document.getElementById(id).classList.add("active");
+  button.classList.add("active");
+
+  if(id==="dashboard" && chart){
+    setTimeout(()=>{
+      chart.resize();
+      if(barChart) barChart.resize();
+    },50);
+  }
+}
+
+function money(amount,currency=data.currency){
+  try{
+    return new Intl.NumberFormat("id-ID",{
+      style:"currency",
+      currency:currency,
+      maximumFractionDigits:
+        currency==="IDR" || currency==="JPY" ? 0 : 2
+    }).format(Number(amount)||0);
+  }catch(e){
+    return Number(amount).toLocaleString("id-ID")+" "+currency;
+  }
+}
+
+/* Kurs API menggunakan IDR sebagai mata uang dasar */
+function convert(amount,from,to){
+  amount = Number(amount)||0;
+
+  if(from===to) return amount;
+
+  if(!ratesLoaded || !rates[from] || !rates[to]){
+    return null;
+  }
+
+  return amount / rates[from] * rates[to];
+}
+
+async function loadRates(){
+  const status = document.getElementById("rateStatus");
+
+  status.textContent = "Memuat kurs mata uang...";
+
+  try{
+    const response = await fetch(
+      "https://open.er-api.com/v6/latest/IDR"
+    );
+
+    if(!response.ok) throw new Error("Koneksi gagal");
+
+    const result = await response.json();
+
+    if(result.result!=="success") throw new Error("Kurs tidak tersedia");
+
+    rates = result.rates;
+    rates.IDR = 1;
+    ratesLoaded = true;
+
+    status.textContent = "Kurs berhasil diperbarui.";
+
+    document.getElementById("conversionUpdated").textContent =
+      "Kurs berhasil dimuat: "+new Date().toLocaleString("id-ID");
+
+  }catch(error){
+    status.textContent =
+      "Kurs gagal dimuat. Periksa koneksi internet.";
+
+    document.getElementById("conversionUpdated").textContent =
+      "Kurs belum tersedia. Coba muat ulang saat internet aktif.";
+  }
+
+  renderAll();
+  calculateConversion();
+}
+
+function changeCurrency(){
+  data.currency = document.getElementById("mainCurrency").value;
+  saveData();
+  renderAll();
+}
+
+function calculateConversion(){
+  const amount = Number(
+    document.getElementById("convertAmount").value
+  );
+
+  const from = document.getElementById("convertFrom").value;
+  const to = document.getElementById("convertTo").value;
+
+  const resultElement =
+    document.getElementById("conversionResult");
+
+  const infoElement =
+    document.getElementById("conversionInfo");
+
+  if(!Number.isFinite(amount) || amount<0){
+    resultElement.textContent = "Nominal tidak valid";
+    infoElement.textContent = "Masukkan nominal yang benar.";
+    return;
+  }
+
+  if(!ratesLoaded){
+    resultElement.textContent = "Kurs belum tersedia";
+    infoElement.textContent = "Periksa koneksi internet.";
+    return;
+  }
+
+  const result = convert(amount,from,to);
+
+  if(result===null){
+    resultElement.textContent = "Konversi gagal";
+    infoElement.textContent = "Kurs mata uang tidak tersedia.";
+    return;
+  }
+
+  resultElement.textContent = money(result,to);
+  infoElement.textContent =
+    money(amount,from)+" = "+money(result,to);
+}
+
+function swapCurrencies(){
+  const from = document.getElementById("convertFrom");
+  const to = document.getElementById("convertTo");
+
+  const temporary = from.value;
+  from.value = to.value;
+  to.value = temporary;
+
+  calculateConversion();
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,char=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[char]);
+}
+
+/* TRANSAKSI */
+document.getElementById("transactionDate").value =
+  new Date().toISOString().slice(0,10);
+
+document.getElementById("transactionForm")
+.addEventListener("submit",function(e){
+  e.preventDefault();
+
+  const name =
+    document.getElementById("transactionName").value.trim();
+
+  const type =
+    document.getElementById("transactionType").value;
+
+  const amount =
+    Number(document.getElementById("transactionAmount").value);
+
+  const currency =
+    document.getElementById("transactionCurrency").value;
+
+  const date =
+    document.getElementById("transactionDate").value;
+
+  const note =
+    document.getElementById("transactionNote").value.trim();
+
+  if(!name || !date || !Number.isFinite(amount) || amount<=0){
+    alert("Periksa kembali data transaksi.");
+    return;
+  }
+
+  data.transactions.push({
+    id:Date.now(),
+    name,type,amount,currency,date,note
+  });
+
+  saveData();
+  this.reset();
+
+  document.getElementById("transactionDate").value =
+    new Date().toISOString().slice(0,10);
+
+  renderAll();
+  alert("Transaksi berhasil disimpan!");
+});
+
+function deleteTransaction(id){
+  if(!confirm("Hapus transaksi ini?")) return;
+
+  data.transactions =
+    data.transactions.filter(t=>t.id!==id);
+
+  saveData();
+  renderAll();
+}
+
+function renderTransactions(){
+  const list = document.getElementById("transactionList");
+  const recent = document.getElementById("recentTransactions");
+
+  const sorted = [...data.transactions].sort((a,b)=>
+    new Date(b.date)-new Date(a.date) || b.id-a.id
+  );
+
+  if(!sorted.length){
+    list.innerHTML = '<p class="empty">Belum ada transaksi.</p>';
+    recent.innerHTML = '<p class="empty">Belum ada transaksi.</p>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(t=>`
+    <div class="item">
+      <div class="item-row">
+        <div>
+          <strong>${escapeHTML(t.name)}</strong><br>
+          <small>${escapeHTML(t.date)} · ${escapeHTML(t.note||t.type)}</small>
+        </div>
+        <div style="text-align:right">
+          <strong class="${t.type==="income"?"green":"red"}">
+            ${t.type==="income"?"+":"-"}${money(t.amount,t.currency)}
+          </strong><br>
+          <button class="danger"
+            onclick="deleteTransaction(${Number(t.id)})">Hapus</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  recent.innerHTML = sorted.slice(0,5).map(t=>`
+    <div class="item item-row">
+      <span>${escapeHTML(t.name)}</span>
+      <strong class="${t.type==="income"?"green":"red"}">
+        ${t.type==="income"?"+":"-"}${money(t.amount,t.currency)}
+      </strong>
+    </div>
+  `).join("");
+}
+
+/* DASHBOARD DAN GRAFIK */
+function renderDashboard(){
+  let income=0;
+  let expense=0;
+
+  data.transactions.forEach(t=>{
+    const value = convert(t.amount,t.currency,data.currency);
+
+    if(value===null) return;
+
+    if(t.type==="income") income+=value;
+    else expense+=value;
+  });
+
+  document.getElementById("balance").textContent =
+    money(income-expense);
+
+  document.getElementById("incomeTotal").textContent =
+    money(income);
+
+  document.getElementById("expenseTotal").textContent =
+    money(expense);
+
+  const saved = data.wishlist.reduce(
+    (sum,w)=>sum+Number(w.saved||0),0
+  );
+
+  document.getElementById("savingTotal").textContent =
+    money(saved);
+
+  renderCharts();
+}
+
+function renderCharts(){
+  const expenses = data.transactions.filter(
+    t=>t.type==="expense"
+  );
+
+  const totals = {};
+
+  expenses.forEach(t=>{
+    const value = convert(t.amount,t.currency,data.currency);
+    if(value===null) return;
+
+    totals[t.name] = (totals[t.name]||0)+value;
+  });
+
+  const labels = Object.keys(totals);
+  const values = Object.values(totals);
+
+  document.getElementById("chartEmpty").style.display =
+    labels.length ? "none" : "block";
+
+  if(chart) chart.destroy();
+
+  if(labels.length){
+    chart = new Chart(
+      document.getElementById("expenseChart"),
+      {
+        type:"doughnut",
+        data:{
+          labels,
+          datasets:[{
+            data:values,
+            backgroundColor:[
+              "#10b981","#3b82f6","#f59e0b",
+              "#ef4444","#8b5cf6","#06b6d4",
+              "#ec4899","#84cc16"
+            ],
+            borderWidth:0
+          }]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            legend:{
+              labels:{color:"#e5e7eb"}
+            }
+          }
+        }
+      }
+    );
+  }
+
+  let income=0;
+  let expense=0;
+
+  data.transactions.forEach(t=>{
+    const value = convert(t.amount,t.currency,data.currency);
+    if(value===null) return;
+
+    if(t.type==="income") income+=value;
+    else expense+=value;
+  });
+
+  document.getElementById("barEmpty").style.display =
+    data.transactions.length ? "none" : "block";
+
+  if(barChart) barChart.destroy();
+
+  if(data.transactions.length && ratesLoaded){
+    barChart = new Chart(
+      document.getElementById("barChart"),
+      {
+        type:"bar",
+        data:{
+          labels:["Pemasukan","Pengeluaran"],
+          datasets:[{
+            label:"Jumlah uang ("+data.currency+")",
+            data:[income,expense],
+            backgroundColor:["#10b981","#f87171"],
+            borderRadius:8
+          }]
+        },
+        options:{
+          responsive:true,
+          scales:{
+            x:{
+              ticks:{color:"#e5e7eb"},
+              grid:{display:false}
+            },
+            y:{
+              beginAtZero:true,
+              ticks:{color:"#e5e7eb"},
+              grid:{color:"#29384d"}
+            }
+          },
+          plugins:{
+            legend:{
+              labels:{color:"#e5e7eb"}
+            }
+          }
+        }
+      }
+    );
+  }else if(data.transactions.length && !ratesLoaded){
+    document.getElementById("barEmpty").textContent =
+      "Grafik menunggu kurs mata uang.";
+    document.getElementById("barEmpty").style.display = "block";
+  }
+}
+
+/* WISHLIST */
+document.getElementById("wishlistForm")
+.addEventListener("submit",function(e){
+  e.preventDefault();
+
+  const name = document.getElementById("wishName").value.trim();
+  const target = Number(document.getElementById("wishTarget").value);
+  const file = document.getElementById("wishImage").files[0];
+
+  if(!name || !Number.isFinite(target) || target<=0){
+    alert("Masukkan data wishlist dengan benar.");
+    return;
+  }
+
+  const addWish = image=>{
+    data.wishlist.push({
+      id:Date.now(),
+      name,
+      target,
+      saved:0,
+      image:image||""
+    });
+
+    saveData();
+    this.reset();
+    renderAll();
+    alert("Wishlist berhasil ditambahkan!");
+  };
+
+  if(file){
+    if(file.size>1500000){
+      alert("Ukuran foto maksimal 1,5 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = ()=>addWish(reader.result);
+    reader.onerror = ()=>alert("Foto gagal dibaca.");
+    reader.readAsDataURL(file);
+  }else{
+    addWish("");
+  }
+});
+
+function addSaving(id){
+  const wish = data.wishlist.find(w=>w.id===id);
+  if(!wish) return;
+
+  const amount = Number(prompt("Masukkan jumlah tabungan:"));
+
+  if(!Number.isFinite(amount) || amount<=0) return;
+
+  wish.saved = Math.min(
+    Number(wish.saved||0)+amount,
+    wish.target
+  );
+
+  saveData();
+  renderAll();
+}
+
+function deleteWish(id){
+  if(!confirm("Hapus wishlist ini?")) return;
+
+  data.wishlist = data.wishlist.filter(w=>w.id!==id);
+  saveData();
+  renderAll();
+}
+
+function renderWishlist(){
+  const list = document.getElementById("wishlistList");
+
+  if(!data.wishlist.length){
+    list.innerHTML = '<p class="empty">Belum ada wishlist.</p>';
+    return;
+  }
+
+  list.innerHTML = data.wishlist.map(w=>{
+    const percent = Math.min(
+      100,Number(w.saved||0)/w.target*100
+    );
+
+    return `
+      <div class="item">
+        ${w.image
+          ? `<img class="wish-img" src="${w.image}" alt="Foto wishlist">`
+          : ""}
+        <strong>${escapeHTML(w.name)}</strong>
+        <p>Target: ${money(w.target)}</p>
+        <p>Terkumpul:
+          <span class="green">${money(w.saved)}</span>
+        </p>
+        <div class="progress">
+          <div style="width:${percent}%"></div>
+        </div>
+        <small>${percent.toFixed(1)}% tercapai</small><br>
+        <button onclick="addSaving(${Number(w.id)})">
+          + Tambah Tabungan
+        </button>
+        <button class="danger"
+          onclick="deleteWish(${Number(w.id)})">Hapus</button>
+      </div>
+    `;
+  }).join("");
+}
+
+/* BACKUP DAN RESTORE */
+function exportData(){
+  const blob = new Blob(
+    [JSON.stringify(data,null,2)],
+    {type:"application/json"}
+  );
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href=url;
+  a.download="backup-dompetglobal.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function importData(){
+  const file = document.getElementById("importFile").files[0];
+
+  if(!file){
+    alert("Pilih file backup terlebih dahulu.");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = ()=>{
+    try{
+      const imported = JSON.parse(reader.result);
+
+      if(!Array.isArray(imported.transactions) ||
+         !Array.isArray(imported.wishlist)){
+        throw new Error("Format tidak sesuai");
+      }
+
+      data = {
+        transactions:imported.transactions,
+        wishlist:imported.wishlist,
+        currency:currencies.includes(imported.currency)
+          ? imported.currency : "IDR"
+      };
+
+      saveData();
+      renderAll();
+
+      alert("Data berhasil dipulihkan!");
+    }catch(error){
+      alert("File backup tidak valid.");
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function resetData(){
+  if(!confirm("Yakin ingin menghapus semua transaksi dan wishlist?")){
+    return;
+  }
+
+  data = {
+    transactions:[],
+    wishlist:[],
+    currency:"IDR"
+  };
+
+  saveData();
+  renderAll();
+  alert("Semua data berhasil dihapus.");
+}
+
+function renderAll(){
+  document.getElementById("mainCurrency").value =
+    data.currency;
+
+  renderDashboard();
+  renderTransactions();
+  renderWishlist();
+  calculateConversion();
+}
+
+/* JALANKAN APLIKASI */
+loadData();
+renderAll();
+loadRates();
+</script>
+
+</body>
+</html>
